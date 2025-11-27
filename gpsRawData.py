@@ -62,54 +62,59 @@ def keep_before_char(text, char):
     else:
         return ""
 
-with open("gpsRawData.csv", mode="w", newline="") as file:
-    writer = csv.writer(file)
+def safe_plot(ax, x, y, label=""):
+    n = min(len(x), len(y))
+    if n == 0:
+        return
+    ax.plot(x[:n], y[:n], label=label)
 
     # Function to update the plots
-    def update_plot(frame):
-        # Check if there is new data to plot
-        if len(time_elapsed) > 0:
-            # Update each axis with the corresponding data
-            axs[0, 0].cla()
-            axs[0, 0].plot(time_elapsed, vg, label='Ground Velocity (km/h)')
-            axs[0, 0].set_title('Ground Velocity (km/h)')
-            axs[0, 0].set_xlabel('Time (s)')
-            axs[0, 0].set_ylabel('Velocity (km/h)')
+def update_plot(frame):
+    # Check if there is new data to plot
+    if len(time_elapsed) > 0:
+        # Update each axis with the corresponding data
+        axs[0, 0].cla()
+        safe_plot(axs[0, 0],time_elapsed, vg, label='Ground Velocity (km/h)')
+        axs[0, 0].set_title('Ground Velocity (km/h)')
+        axs[0, 0].set_xlabel('Time (s)')
+        axs[0, 0].set_ylabel('Velocity (km/h)')
 
-            axs[0, 1].cla()
-            axs[0, 1].plot(time_elapsed, lat, label='Latitude')
-            axs[0, 1].set_title('Latitude')
-            axs[0, 1].set_xlabel('Time (s)')
-            axs[0, 1].set_ylabel('Latitude')
+        axs[0, 1].cla()
+        safe_plot(axs[0, 1],time_elapsed, lat, label='Latitude')
+        axs[0, 1].set_title('Latitude')
+        axs[0, 1].set_xlabel('Time (s)')
+        axs[0, 1].set_ylabel('Latitude')
 
-            axs[1, 0].cla()
-            axs[1, 0].plot(time_elapsed, long, label='Longitude')
-            axs[1, 0].set_title('Longitude')
-            axs[1, 0].set_xlabel('Time (s)')
-            axs[1, 0].set_ylabel('Longitude')
+        axs[1, 0].cla()
+        safe_plot(axs[1, 0],time_elapsed, long, label='Longitude')
+        axs[1, 0].set_title('Longitude')
+        axs[1, 0].set_xlabel('Time (s)')
+        axs[1, 0].set_ylabel('Longitude')
 
-            axs[1, 1].cla()
-            axs[1, 1].plot(time_elapsed, alt, label='Altitude')
-            axs[1, 1].set_title('Altitude (m)')
-            axs[1, 1].set_xlabel('Time (s)')
-            axs[1, 1].set_ylabel('Altitude (m)')
+        axs[1, 1].cla()
+        safe_plot(axs[1, 1],time_elapsed, alt, label='Altitude')
+        axs[1, 1].set_title('Altitude (m)')
+        axs[1, 1].set_xlabel('Time (s)')
+        axs[1, 1].set_ylabel('Altitude (m)')
 
-            axs[2, 0].cla()
-            axs[2, 0].plot(time_elapsed, acc2d, label='HDOP')
-            axs[2, 0].set_title('Horizontal Dilution of Precision (HDOP)')
-            axs[2, 0].set_xlabel('Time (s)')
-            axs[2, 0].set_ylabel('HDOP')
+        axs[2, 0].cla()
+        safe_plot(axs[2, 0],time_elapsed, acc2d, label='HDOP')
+        axs[2, 0].set_title('Horizontal Dilution of Precision (HDOP)')
+        axs[2, 0].set_xlabel('Time (s)')
+        axs[2, 0].set_ylabel('HDOP')
 
-            axs[2, 1].cla()
-            axs[2, 1].plot(time_elapsed, acc3d, label='VDOP')
-            axs[2, 1].set_title('Vertical Dilution of Precision (VDOP)')
-            axs[2, 1].set_xlabel('Time (s)')
-            axs[2, 1].set_ylabel('VDOP')
+        axs[2, 1].cla()
+        safe_plot(axs[2, 1],time_elapsed, acc3d, label='VDOP')
+        axs[2, 1].set_title('Vertical Dilution of Precision (VDOP)')
+        axs[2, 1].set_xlabel('Time (s)')
+        axs[2, 1].set_ylabel('VDOP')
 
-        return axs
+    return axs
 
-    def process_data():
-        # receive data
+def process_data():
+    with open("gpsRawData.csv", mode="w", newline="") as file:
+        writer = csv.writer(file)
+    # receive data
         while True:
             # wait until there's data
             while baseData.inWaiting() == 0:
@@ -120,21 +125,21 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
             dataPacket = remove_before_char(rdata, "$G")
             splitPacket = dataPacket.split(',')
 
-            #print(str(baseData.readline()))
-            #print(rdata)
-            #print(dataPacket)
-            #print(splitPacket)
+            # print(str(baseData.readline()))
+            # print(rdata)
+            # print(dataPacket)
+            # print(splitPacket)
 
             # dont process bad data
             if len(splitPacket) == 0:
                 continue
-            
+
             # message type
             con = str (splitPacket[0])
 
             if con == "$GNRMC":
                 # global time (adjusted from GMT)
-                if splitPacket[1] != "":                     
+                if splitPacket[1] != "":
                     timeutc = str (splitPacket[1])
                     timeutc_hr  = (float(timeutc[0:2]) - 5) % 24
                     timeutc_min = float(timeutc[2:4])
@@ -149,9 +154,9 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                 else:
                     time_ins = ""
                     time_elapsed.append(-1)
-                
+
                 '''print(f"Time Elapsed: {time_elapsed}")  # Debug line to check time elapsed'''
-        
+
                 # status
                 if str (splitPacket[2]) == "A":
                     status = "Active, Valid"
@@ -186,7 +191,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     thead = str (splitPacket[1])
                 else:
                     thead = "0"
-                
+
                 # magnetic heading (heading relative to magnetic north)
                 if splitPacket[3] != "" and splitPacket[4] == "M":
                     mhead = str (splitPacket[3])
@@ -204,7 +209,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                 else:
                     vg_kmh = ""
                     vg.append(-999)
-                
+
                 '''print(f"Appending Ground Velocity: {vg}")  # Debug line to check vg appending'''
 
                 writer.writerow(["thead, mhead, vg_knot, vg_kmh"])
@@ -223,7 +228,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     lat_ins = ""
                     lat.append(-999)
                     lat_dir = ""
-                
+
                 '''print(f"Appending Latitude: {lat}")  # Debug line to check lat appending'''
 
                 # longitude
@@ -236,9 +241,9 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     long_ins = ""
                     long.append(-999)
                     long_dir = ""
-                
+
                 '''print(f"Appending Longitude: {long}")  # Debug line to check long appending'''
-                
+
                 # total fix status
                 if float(splitPacket[6]) == 0:
                     tfix = "No Fix"
@@ -268,7 +273,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                 else:
                     alt_ins = ""
                     alt.append(-999)
-                
+
                 '''print(f"Appending Altitude: {alt}")  # Debug line to check alt appending'''
 
                 # geoid separation
@@ -292,7 +297,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     satmode = "Manual"
                 else:
                     satmode = ""
-                
+
                 # satellite IDs
                 for i in range(3,15):
                     if splitPacket[i] == "":
@@ -308,33 +313,38 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     hdop = ""
                 else:
                     hdop = ""
-                
+
                 if len(acc2d) < len(time_elapsed):
-                    acc2d.append(float(hdop))
+                    try:
+                        acc2d.append(float(hdop))
+                    except ValueError:
+                        # skip missing or bad values
+                        return
+
                 else:
                     pass
                 '''print(f"Appending 2D Accuracy: {acc2d}")  # Debug line to check acc2d appending'''
-                
+
                 if splitPacket[17] != "" and splitPacket[17] != "99.99":
                     vdop = str (splitPacket[17])
                 elif splitPacket[17] == "99.99":
                     vdop = ""
                 else:
                     vdop = ""
-                
+
                 if splitPacket[15] != "" and splitPacket[15] != "99.99":
                     pdop = str (splitPacket[15])
                 elif splitPacket[15] == "99.99":
                     pdop = ""
                 else:
                     pdop = ""
-                
+
                 if len(acc3d) < len(time_elapsed):
                     acc3d.append(float(pdop))
                 else:
                     pass
                 '''print(f"Appending 3D Accuracy: {acc3d}")  # Debug line to check acc3d appending'''
-                
+
                 writer.writerow(["satmode, hdop, vdop, pdop"])
                 writer.writerow([satmode, hdop, vdop, pdop])
                 file.flush()
@@ -373,7 +383,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     nsatnum_gps = 4
                 else:
                     nsatnum_gps = int(min(10,tsatnum_gps)) - 4 * (int(tmnum_gps) - 1)
-                
+
                 if nsatnum_gps == 0:
                     pass
                 else:
@@ -422,7 +432,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     nsatnum_gl = 4
                 else:
                     nsatnum_gl = int(min(10,tsatnum_gl)) - 4 * (int(tmnum_gl) - 1)
-                
+
                 if nsatnum_gl == 0:
                     pass
                 else:
@@ -470,7 +480,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     nsatnum_ga = 4
                 else:
                     nsatnum_ga = int(min(10,tsatnum_ga)) - 4 * (int(tmnum_ga) - 1)
-                
+
                 if nsatnum_ga == 0:
                     pass
                 else:
@@ -518,7 +528,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     nsatnum_bd = 4
                 else:
                     nsatnum_bd = int(min(10,tsatnum_bd)) - 4 * (int(tmnum_bd) - 1)
-                
+
                 if nsatnum_bd == 0:
                     pass
                 else:
@@ -536,7 +546,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     file.flush()
                     '''for i in range(0,nsatnum_bd):
                         print(f"BeiDou Satellite {i+1} - ID: {satid_bd[i]}, Elevation: {satelev_bd[i]}°, Azimuth: {satazi_bd[i]}°, Strength: {satstr_bd[i]} dB")'''
-            
+
             elif con == "$GQGSV":
                 # Michibiki satellites - total info
                 if splitPacket[1] != "":
@@ -566,7 +576,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     nsatnum_qz = 4
                 else:
                     nsatnum_qz = int(min(10,tsatnum_qz)) - 4 * (int(tmnum_qz) - 1)
-                
+
                 if nsatnum_qz == 0:
                     pass
                 else:
@@ -584,7 +594,7 @@ with open("gpsRawData.csv", mode="w", newline="") as file:
                     file.flush()
                     '''for i in range(0,nsatnum_qz):
                         print(f"Michibiki Satellite {i+1} - ID: {satid_qz[i]}, Elevation: {satelev_qz[i]}°, Azimuth: {satazi_qz[i]}°, Strength: {satstr_qz[i]} dB")'''
-            
+
             else:
                 pass
 

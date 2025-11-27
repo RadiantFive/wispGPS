@@ -95,7 +95,7 @@ data_lock = threading.Lock()
 def process_data():
     with data_lock:
         # Open file once outside the loop
-        with open("gpsRawData.csv", mode="w", newline="") as file:
+        with open("gpsData.csv", mode="w", newline="") as file:
             writer = csv.writer(file)
 
             # Write headers only once
