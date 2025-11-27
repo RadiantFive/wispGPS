@@ -298,7 +298,7 @@ def process_data():
                 else:
                     satmode = ""
 
-                # satellite IDs
+               # satellite IDs
                 for i in range(3,15):
                     if splitPacket[i] == "":
                         satid = splitPacket[3:i]
