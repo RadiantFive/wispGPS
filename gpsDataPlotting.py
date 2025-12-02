@@ -112,6 +112,8 @@ def process_data():
                 rdata = baseData.readline().decode('utf-8', errors='ignore').strip()
                 dataPacket = remove_before_char(rdata, "$G")
                 splitPacket = dataPacket.split(',')
+                #print("RAW:", rdata)
+                #print("PARSED:", dataPacket)
 
                 if len(splitPacket) == 0:
                     continue
@@ -122,24 +124,29 @@ def process_data():
                 time_diff = 0
                 # can't loop using system time, as it appends for each line that comes in
                 if con == "$GNRMC":
-                    # global time (adjusted from GMT)
-                    if splitPacket[1] != "":                     
-                        timeutc = str (splitPacket[1])
-                        timeutc_hr  = (float(timeutc[0:2]) - 5) % 24
+                    if splitPacket[1] != "":
+                        # normal path (valid time)
+                        timeutc = splitPacket[1]
+                        timeutc_hr = (float(timeutc[0:2]) - 5) % 24
                         timeutc_min = float(timeutc[2:4])
                         timeutc_sec = float(timeutc[4:6])
-                        time_ins = str (round(float(timeutc[0:2]) - 5) % 24) + ":" + str (timeutc[2:4]) + ":" + str (timeutc[4:6])
+
+                        timestamp = timeutc_hr * 3600 + timeutc_min * 60 + timeutc_sec
+
                         if len(time_elapsed) == 0:
-                            time_start = timeutc_hr * 3600 + timeutc_min * 60 + timeutc_sec
+                            time_start = timestamp
                             time_diff = 0
+                        else:
+                            time_diff = timestamp - time_start
+
+                        time_elapsed.append(time_diff)
+
+                    else:
+                        # missing timestamp → just increment by 1 second safely
+                        if len(time_elapsed) == 0:
                             time_elapsed.append(0)
                         else:
-                            time_diff = timeutc_hr * 3600 + timeutc_min * 60 + timeutc_sec - time_start
-                            time_elapsed.append(time_diff)
-                    else:
-                        time_ins = ""
-                        time_diff = ""
-                        time_elapsed.append(time_elapsed[-1] + 1)
+                            time_elapsed.append(time_elapsed[-1] + 1)
 
                 if con == "$GNVTG":
                     if splitPacket[7] != "" and splitPacket[8] == "K":
@@ -213,8 +220,9 @@ def process_data():
                         pass
 
                 # Update the plot
-                if len(vg) or len(lat) or len(long) or len(alt) or len(acc2d) or len(acc3d) == 0:
-                    pass
+                if not (len(time_elapsed) == len(vg) == len(lat) == len(long) == len(alt) == len(acc2d) == len(acc3d)):
+                    continue
+
                 else:
                     if len(time_elapsed) == len(vg) == len(lat) == len(long) == len(alt) == len(acc2d) == len(acc3d):
                         update_plot(None)
