@@ -66,43 +66,49 @@ def keep_before_char(text, char):
 
 # Function to update the plots
 def update_plot(frame):
-    if len(time_elapsed) > 0:
-        # Plot data
-        axs[0, 0].plot(time_elapsed, vg, label='Ground Velocity (km/h)', color='blue')
-        axs[0, 1].plot(time_elapsed, lat, label='Latitude', color='red')
-        axs[1, 0].plot(time_elapsed, long, label='Longitude', color='green')
-        axs[1, 1].plot(time_elapsed, alt, label='Altitude (m)', color='purple')
-        axs[2, 0].plot(time_elapsed, acc2d, label='HDOP', color='black')
-        axs[2, 1].plot(time_elapsed, acc3d, label='VDOP', color='black')
+    with data_lock:
+        if len(time_elapsed) > 0:
 
-        # Dynamically adjust the y-axis limits for each plot
-        axs[0, 0].set_ylim([min(vg) - 0.1, max(vg) + 0.1])  # Ground Velocity
-        axs[0, 1].set_ylim([min(lat) - 0.001, max(lat) + 0.001])  # Latitude
-        axs[1, 0].set_ylim([min(long) - 0.001, max(long) + 0.001])  # Longitude
-        axs[1, 1].set_ylim([min(alt) - 1, max(alt) + 1])  # Altitude
-        axs[2, 0].set_ylim([min(acc2d) - 0.5, max(acc2d) + 0.5])  # HDOP
-        axs[2, 1].set_ylim([min(acc3d) - 0.5, max(acc3d) + 0.5])  # VDOP
+            # CLEAR all axes before redrawing
+            for ax in axs.flat:
+                ax.cla()
 
-        # Update titles and labels outside the loop to avoid redundancy
-        for ax in axs.flat:
-            ax.set_xlabel('Time (s)')
-            ax.set_ylabel('Value')
+            # Plot data
+            axs[0, 0].plot(time_elapsed, vg, label='Ground Velocity (km/h)', color='blue')
+            axs[0, 1].plot(time_elapsed, lat, label='Latitude', color='red')
+            axs[1, 0].plot(time_elapsed, long, label='Longitude', color='green')
+            axs[1, 1].plot(time_elapsed, alt, label='Altitude (m)', color='purple')
+            axs[2, 0].plot(time_elapsed, acc2d, label='HDOP', color='black')
+            axs[2, 1].plot(time_elapsed, acc3d, label='VDOP', color='black')
 
-    return axs
+            # Dynamically adjust the y-axis limits for each plot
+            axs[0, 0].set_ylim([min(vg) - 0.1, max(vg) + 0.1])  # Ground Velocity
+            axs[0, 1].set_ylim([min(lat) - 0.001, max(lat) + 0.001])  # Latitude
+            axs[1, 0].set_ylim([min(long) - 0.001, max(long) + 0.001])  # Longitude
+            axs[1, 1].set_ylim([min(alt) - 1, max(alt) + 1])  # Altitude
+            axs[2, 0].set_ylim([min(acc2d) - 0.5, max(acc2d) + 0.5])  # HDOP
+            axs[2, 1].set_ylim([min(acc3d) - 0.5, max(acc3d) + 0.5])  # VDOP
+
+            # Update titles and labels outside the loop to avoid redundancy
+            for ax in axs.flat:
+                ax.set_xlabel('Time (s)')
+                ax.set_ylabel('Value')
+
+        return axs
 
 data_lock = threading.Lock()
 # Data processing function
 def process_data():
     with data_lock:
         # Open file once outside the loop
-        with open("gpsData.csv", mode="w", newline="") as file:
+        with open("gpsCleanData.csv", mode="w", newline="") as file:
             writer = csv.writer(file)
 
             # Write headers only once
             writer.writerow(["time_elapsed", "vg", "lat", "long", "alt", "acc2d", "acc3d"])
 
             start_time = time.time()  # Track the start time
-
+            time_start = None
             while True:
                 # Wait until there's data available
                 while baseData.inWaiting() == 0:
@@ -133,7 +139,7 @@ def process_data():
 
                         timestamp = timeutc_hr * 3600 + timeutc_min * 60 + timeutc_sec
 
-                        if len(time_elapsed) == 0:
+                        if time_start is None:
                             time_start = timestamp
                             time_diff = 0
                         else:
@@ -213,24 +219,41 @@ def process_data():
                         pdop = str(-1)
                     else:
                         pdop = str(-1)
-                    
+
                     if len(acc3d) < len(time_elapsed):
                         acc3d.append(float(pdop))
                     else:
                         pass
 
                 # Update the plot
-                if not (len(time_elapsed) == len(vg) == len(lat) == len(long) == len(alt) == len(acc2d) == len(acc3d)):
+                # Only write if ALL lists have at least 1 element
+                if min(len(time_elapsed), len(vg), len(lat), len(long), len(alt), len(acc2d), len(acc3d)) == 0:
                     continue
 
-                else:
-                    if len(time_elapsed) == len(vg) == len(lat) == len(long) == len(alt) == len(acc2d) == len(acc3d):
-                        update_plot(None)
-                        # Write data to CSV every time new data is processed
-                        writer.writerow([time_diff, vg[-1], lat[-1], long[-1], alt[-1], acc2d[-1], acc3d[-1]])
-                        file.flush()
-                    else:
-                        pass
+                # Truncate all lists to the same length
+                min_len = min(len(time_elapsed), len(vg), len(lat), len(long), len(alt), len(acc2d), len(acc3d))
+
+                time_elapsed[:] = time_elapsed[:min_len]
+                vg[:] = vg[:min_len]
+                lat[:] = lat[:min_len]
+                long[:] = long[:min_len]
+                alt[:] = alt[:min_len]
+                acc2d[:] = acc2d[:min_len]
+                acc3d[:] = acc3d[:min_len]
+
+                # Now safe to write
+
+                writer.writerow([
+                    time_elapsed[-1],
+                    vg[-1],
+                    lat[-1],
+                    long[-1],
+                    alt[-1],
+                    acc2d[-1],
+                    acc3d[-1]
+                ])
+                file.flush()
+
 
 # Start the process in a separate thread
 def start_data_processing():
