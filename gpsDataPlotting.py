@@ -107,8 +107,10 @@ def process_data():
             # Write headers only once
             writer.writerow(["time_elapsed", "vg", "lat", "long", "alt", "acc2d", "acc3d"])
 
-            start_time = time.time()  # Track the start time
+            # start_time = time.time()  # Track the start time
             time_start = None
+            new_time = False #use to check if an RMC packet has come in
+
             while True:
                 # Wait until there's data available
                 while baseData.inWaiting() == 0:
@@ -118,8 +120,8 @@ def process_data():
                 rdata = baseData.readline().decode('utf-8', errors='ignore').strip()
                 dataPacket = remove_before_char(rdata, "$G")
                 splitPacket = dataPacket.split(',')
-                #print("RAW:", rdata)
-                #print("PARSED:", dataPacket)
+                print("RAW:", rdata)
+                print("PARSED:", dataPacket)
 
                 if len(splitPacket) == 0:
                     continue
@@ -128,14 +130,12 @@ def process_data():
 
                 # Processing different GPS messages like $GNRMC, $GNVTG, etc.
                 time_diff = 0
-                # can't loop using system time, as it appends for each line that comes in
                 if con == "$GNRMC":
                     if splitPacket[1] != "":
-                        # normal path (valid time)
                         timeutc = splitPacket[1]
                         timeutc_hr = (float(timeutc[0:2]) - 5) % 24
                         timeutc_min = float(timeutc[2:4])
-                        timeutc_sec = float(timeutc[4:6])
+                        timeutc_sec = float(timeutc[4:])
 
                         timestamp = timeutc_hr * 3600 + timeutc_min * 60 + timeutc_sec
 
@@ -146,9 +146,10 @@ def process_data():
                             time_diff = timestamp - time_start
 
                         time_elapsed.append(time_diff)
+                        new_time = True
 
                     else:
-                        # missing timestamp → just increment by 1 second safely
+                        # if time string is missing just increment by 1 second
                         if len(time_elapsed) == 0:
                             time_elapsed.append(0)
                         else:
@@ -233,7 +234,7 @@ def process_data():
                 # Truncate all lists to the same length
                 min_len = min(len(time_elapsed), len(vg), len(lat), len(long), len(alt), len(acc2d), len(acc3d))
 
-                time_elapsed[:] = time_elapsed[:min_len]
+
                 vg[:] = vg[:min_len]
                 lat[:] = lat[:min_len]
                 long[:] = long[:min_len]
@@ -243,16 +244,18 @@ def process_data():
 
                 # Now safe to write
 
-                writer.writerow([
-                    time_elapsed[-1],
-                    vg[-1],
-                    lat[-1],
-                    long[-1],
-                    alt[-1],
-                    acc2d[-1],
-                    acc3d[-1]
-                ])
-                file.flush()
+                if new_time: # only write when RMC updates
+                    writer.writerow([
+                        time_elapsed[-1],
+                        vg[-1],
+                        lat[-1],
+                        long[-1],
+                        alt[-1],
+                        acc2d[-1],
+                        acc3d[-1]
+                    ])
+                    file.flush()
+                    new_time = False
 
 
 # Start the process in a separate thread
