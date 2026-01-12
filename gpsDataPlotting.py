@@ -120,8 +120,8 @@ def process_data():
                 rdata = baseData.readline().decode('utf-8', errors='ignore').strip()
                 dataPacket = remove_before_char(rdata, "$G")
                 splitPacket = dataPacket.split(',')
-                print("RAW:", rdata)
-                print("PARSED:", dataPacket)
+                # print("RAW:", rdata)
+                # print("PARSED:", dataPacket)
 
                 if len(splitPacket) == 0:
                     continue
@@ -255,7 +255,7 @@ def process_data():
                         acc3d[-1]
                     ])
                     file.flush()
-                    new_time = False
+                    new_time = True
 
 
 # Start the process in a separate thread
